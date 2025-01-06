@@ -11,6 +11,9 @@ const Auth: React.FC<AuthProps> = ({ onSignOut }) => {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: {
+        redirectTo: "https://kaamtonghaam.vercel.app",
+      },
     });
     if (error) console.error("Error signing in:", error.message);
   };

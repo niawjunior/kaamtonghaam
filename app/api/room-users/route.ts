@@ -6,10 +6,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { roomId, userId, nickname } = body;
 
-    // Step 1: Check if the room exists
+    // Step 1: Check if the room exists and if the game is in progress
     const { data: room, error: roomError } = await supabase
       .from("rooms")
-      .select("*")
+      .select("id, status") // Select only necessary fields
       .eq("id", roomId)
       .single();
 
@@ -21,7 +21,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if the user already exists in the room
+    if (room.status === "in_progress") {
+      // Game is in progress, block the user from joining
+      return NextResponse.json(
+        { error: "Cannot join room. The game is already in progress." },
+        { status: 403 }
+      );
+    }
+
+    // Step 2: Check if the user already exists in the room
     const { data: existingUser, error: selectError } = await supabase
       .from("room_users")
       .select("*")
@@ -40,7 +48,6 @@ export async function POST(req: NextRequest) {
       const { error: updateError } = await supabase
         .from("room_users")
         .update({ joined_at: new Date().toISOString(), nickname })
-
         .eq("room_id", roomId)
         .eq("user_id", userId);
 
@@ -58,7 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // User does not exist, insert a new record
+    // Step 3: User does not exist, insert a new record
     const { data, error: insertError } = await supabase
       .from("room_users")
       .insert({

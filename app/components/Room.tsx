@@ -18,41 +18,49 @@ const Room: React.FC<RoomProps> = ({ roomId, userId, onLeaveRoom }) => {
   const [error, setError] = useState("");
   const [nickname, setNickname] = useState("");
   const [userList, setUserList] = useState<User[]>([]); // State for user list
+  const [loading, setLoading] = useState(false);
   // Fetch initial user count and user details
 
   const fetchRoomData = useCallback(async () => {
-    // Fetch room details
-    const roomRes = await fetch(`/api/rooms?roomId=${roomId}`);
-    if (roomRes.status === 200) {
-      const room = await roomRes.json();
-      setRoomStatus(room.status);
-      setIsOwner(room.host === userId); // Check if the current user is the owner
-    } else {
-      console.error("Failed to fetch room details");
-    }
+    try {
+      setLoading(true);
+      const [roomRes, countRes, usersRes] = await Promise.all([
+        fetch(`/api/rooms?roomId=${roomId}`),
+        fetch(`/api/room-user-count/${roomId}`),
+        fetch(`/api/room-users/${roomId}`),
+      ]);
 
-    // Fetch user count
-    const countRes = await fetch(`/api/room-user-count/${roomId}`);
-    if (countRes.status === 200) {
-      const { count } = await countRes.json();
-      setUserCount(count);
-    } else {
-      console.error("Failed to fetch user count");
-    }
-
-    // Fetch user details
-    const usersRes: any = await fetch(`/api/room-users/${roomId}`);
-    if (usersRes.status === 200) {
-      const res = await usersRes.json();
-      setUserList(res);
-      const findUser = res.find((user: any) => user.user_id === userId);
-      if (findUser) {
-        setNickname(findUser?.nickname);
+      if (roomRes.status === 200) {
+        const room = await roomRes.json();
+        setRoomStatus(room.status);
+        setIsOwner(room.host === userId); // Check if the current user is the owner
       } else {
-        setNickname("");
+        console.error("Failed to fetch room details");
       }
-    } else {
-      console.error("Failed to fetch users");
+
+      if (countRes.status === 200) {
+        const { count } = await countRes.json();
+        setUserCount(count);
+      } else {
+        console.error("Failed to fetch user count");
+      }
+
+      if (usersRes.status === 200) {
+        const res = await usersRes.json();
+        setUserList(res);
+        const findUser = res.find((user: any) => user.user_id === userId);
+        if (findUser) {
+          setNickname(findUser?.nickname);
+        } else {
+          setNickname("");
+        }
+      } else {
+        console.error("Failed to fetch users");
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching room data:", error);
+      setLoading(false);
     }
   }, [roomId, userId]);
   useEffect(() => {
@@ -62,10 +70,18 @@ const Room: React.FC<RoomProps> = ({ roomId, userId, onLeaveRoom }) => {
   // Listen for realtime updates
   useEffect(() => {
     const subscription = supabase
-      .channel("public:room_users")
+      .channel("db-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "room_users" },
+        (payload) => {
+          console.log("Realtime update:", payload);
+          fetchRoomData();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rooms" },
         (payload) => {
           console.log("Realtime update:", payload);
           fetchRoomData();
@@ -105,6 +121,16 @@ const Room: React.FC<RoomProps> = ({ roomId, userId, onLeaveRoom }) => {
     }
   };
 
+  if (loading) {
+    return (
+      <div
+        className="absolute top-0 left-0 right-0 bottom-0 bg-gray-900 text-white text-center p-4 flex items-center justify-center"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      >
+        <h1 className="text-2xl font-bold">กำลังโหลด...</h1>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col items-center justify-center ">
       <h1 className="text-4xl font-bold mb-6">

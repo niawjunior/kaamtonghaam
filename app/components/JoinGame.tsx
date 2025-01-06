@@ -12,12 +12,13 @@ interface JoinGameProps {
 const JoinGame: React.FC<JoinGameProps> = ({ userId, onJoinRoom }) => {
   const [roomId, setRoomId] = useState("");
   const [nickname, setNickname] = useState("");
-
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [showModal, setShowModal] = useState(false); // Modal visibility state
 
   const handleJoinRoom = async () => {
+    setLoading(true);
     const res = await fetch("/api/room-users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -29,16 +30,19 @@ const JoinGame: React.FC<JoinGameProps> = ({ userId, onJoinRoom }) => {
       setError("");
       setShowModal(false); // Close modal on success
       onJoinRoom(true);
+      setLoading(false);
     } else {
       const { error } = await res.json();
       setError(error || "Failed to join room");
       setSuccess(false);
+      setLoading(false);
     }
   };
 
   const openModal = () => {
     setShowModal(true);
     setRoomId("");
+    setNickname("");
   };
   const onLeaveRoom = () => {
     setSuccess(false);
@@ -84,9 +88,34 @@ const JoinGame: React.FC<JoinGameProps> = ({ userId, onJoinRoom }) => {
                   </button>
                   <button
                     onClick={handleJoinRoom}
-                    className="px-4 py-2 bg-green-500 w-full text-white rounded hover:bg-green-700"
+                    className={`px-4 py-2 bg-green-500 w-full text-white rounded hover:bg-green-700 ${
+                      loading ? "cursor-not-allowed opacity-50" : ""
+                    }`}
                   >
-                    เข้าร่วมเกมส์
+                    {loading ? (
+                      <svg
+                        className="animate-spin h-5 w-5 text-white mx-auto"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "เข้าร่วมเกมส์"
+                    )}
                   </button>
                 </div>
                 {error && <p className="text-red-500 mt-2">{error}</p>}
