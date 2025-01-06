@@ -3,10 +3,10 @@ import { supabase } from "../../../../lib/supabase";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { roomId: string } }
+  context: { params: { roomId: string } }
 ) {
   try {
-    const { roomId } = params;
+    const { roomId } = context.params;
 
     // Fetch users in the specified room
     const { data, error } = await supabase
