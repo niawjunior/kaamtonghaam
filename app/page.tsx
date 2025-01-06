@@ -94,7 +94,6 @@ export default function Home() {
           <JoinGame
             userId={user.id}
             email={user.email}
-            user={user}
             onJoinRoom={handleJoinRoom}
           />
         </div>
